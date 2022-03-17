@@ -7,4 +7,3 @@
 
 ## mdsj is a library for mds
 sample-custom-layout-1.0 is DEMA version 1.0
-sample-custom-layout-2-2.0 is DEMA version 2.0 (multi-thread)
