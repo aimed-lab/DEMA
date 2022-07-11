@@ -5,5 +5,6 @@
 
 ## * jakechen@uab.edu, zhuys@pku.edu.cn
 
+## Tutorial video: https://youtu.be/N9EhWbZGSg4
 ## mdsj is a library for mds
 sample-custom-layout-1.0 is DEMA version 1.0
