@@ -122,7 +122,7 @@ This "How to Use" section is based on the information derivable from the codebas
 Refer to the tutorial video (https://youtu.be/N9EhWbZGSg4) for a visual guide and potentially more detailed examples.
 
 ## Citation
-Weng Z, Yue Z, Zhu Y, Chen JY. DEMA: a distance-bounded energy-field minimization algorithm to model and layout biomolecular networks with quantitative features. Bioinformatics. 2022 Jun 24;38(Suppl 1):i359-i368. doi: 10.1093/bioinformatics/btac261. PMID: 35758816; PMCID: PMC9235497.
+Weng Z, Yue Z, Zhu Y, Chen JY. [DEMA: a distance-bounded energy-field minimization algorithm to model and layout biomolecular networks with quantitative features](https://academic.oup.com/bioinformatics/article/38/Supplement_1/i359/6617529). Bioinformatics. 2022 Jun 24;38(Suppl 1):i359-i368. doi: 10.1093/bioinformatics/btac261. PMID: 35758816; PMCID: PMC9235497.
 
 ## Repository Structure
 
