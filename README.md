@@ -91,22 +91,19 @@ Measured environment:
 
 Latest benchmark-medium results (80 rounds, 3 repeats):
 
-*   Java mean runtime: `14.646 ms`
-*   Python(serial) mean runtime: `256.273 ms`
-*   Python(parallel, workers=8) mean runtime: `1046.870 ms`
+*   Java mean runtime: `11.254 ms`
+*   Python(serial, backend=`numba`) mean runtime: `10.277 ms`
+*   Python(parallel, workers=8) mean runtime: `681.839 ms`
 
-Worker sweep on the same machine:
+Parity (benchmark-small, seed 7):
 
-*   workers=1: `868.854 ms`
-*   workers=2: `794.323 ms`
-*   workers=4: `1243.660 ms`
-*   workers=8: `803.474 ms`
-*   workers=10: `1007.766 ms`
+*   Java vs Python(serial) max coordinate delta: `4.661998787014e-09`
 
 Note:
 
-*   In restricted environments where process pools are limited and thread fallback is used, parallel overhead can dominate.
-*   On unrestricted systems and larger graphs, parallel mode may still improve throughput.
+*   The serial Python backend now uses Numba JIT acceleration for hot loops (with NumPy fallback if unavailable).
+*   Reported `elapsed_ms` is steady-state runtime (JIT warm-up is performed before timing).
+*   Parallel mode still has significant overhead on small/medium fixtures and is currently best treated as an experimental path.
 
 ## How to Use
 

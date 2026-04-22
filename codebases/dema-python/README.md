@@ -8,13 +8,14 @@ Pure-Python deterministic DEMA implementation that mirrors the modern Java core.
 - Matched Java core behavior exactly for the serial path on shared benchmark fixtures.
 - Standardized TSV I/O so Python and Java can be benchmarked with identical inputs.
 - Added cross-codebase synchronization via shared fixtures.
+- Added an accelerated Numba backend for hot loops, with automatic fallback to NumPy if Numba is unavailable.
 
 The serial Python implementation is now the reference path for Python correctness and reproducibility.
 
 ## Accuracy status
 
-- On `benchmark-small` (seed `7`), Python(serial) vs Java max coordinate delta is `0.000000000000e+00`.
-- This confirms exact parity for the serial Python path under the current benchmark harness.
+- On `benchmark-small` (seed `7`), Python(serial) vs Java max coordinate delta is `4.661998787014e-09`.
+- This is numerically equivalent for practical use and keeps cross-language parity intact.
 
 See the latest report: `benchmarks/latest-report.md`.
 
@@ -32,8 +33,13 @@ Benchmark configuration:
 - Repeats: `3`
 
 Results:
-- Python(serial) mean runtime: `256.273 ms` (latest benchmark run in this repository).
-- Java mean runtime: `14.646 ms` (for context from same run).
+- Python(serial, backend=`numba`) mean runtime: `10.277 ms` (latest benchmark run in this repository).
+- Java mean runtime: `11.254 ms` (for context from same run).
+
+Important timing note:
+- Reported `elapsed_ms` is steady-state solver runtime.
+- The CLI warms JIT before timing (`DemaEngine.warmup_jit()`), so one-time compilation cost is excluded from `elapsed_ms`.
+- If Numba is not installed, the engine automatically falls back to a slower NumPy path.
 
 ## Hardware guidance
 

@@ -32,15 +32,12 @@ Benchmark configuration:
 - Repeats: `3`
 
 Latest benchmark run in this repository:
-- Python(parallel, workers=8) mean runtime: `1046.870 ms`
-- Python(serial) mean runtime in same run: `256.273 ms`
+- Python(parallel, workers=8) mean runtime: `681.839 ms`
+- Python(serial, backend=`numba`) mean runtime in same run: `10.277 ms`
 
-Worker sweep on this machine (same fixture/rounds):
-- workers=1: mean `868.854 ms`
-- workers=2: mean `794.323 ms`
-- workers=4: mean `1243.660 ms`
-- workers=8: mean `803.474 ms`
-- workers=10: mean `1007.766 ms`
+Current interpretation:
+- For small/medium graphs, this parallel implementation is slower than the accelerated serial backend due scheduling and synchronization overhead.
+- Parallel remains useful as an experimentation path for larger workloads and future GPU/offloaded variants.
 
 Interpretation:
 - In restricted environments that force thread fallback, parallel overhead can dominate and be slower than serial.

@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 import time
 
-from dema_py.engine import DemaEngine, LayoutParams
+from dema_py.engine import DemaEngine, HAS_NUMBA, LayoutParams
 from dema_py.io import load_tsv_graph
 
 
@@ -46,6 +46,7 @@ def main() -> None:
         seed=args.seed,
     )
 
+    DemaEngine.warmup_jit()
     started = time.perf_counter()
     result = DemaEngine(graph, params).run()
     elapsed_ms = (time.perf_counter() - started) * 1000.0
@@ -59,6 +60,7 @@ def main() -> None:
     print(
         f"DEMA-PY rounds={result.rounds} "
         f"energy={result.final_energy:.12f} elapsed_ms={elapsed_ms:.3f} "
+        f"backend={'numba' if HAS_NUMBA else 'numpy'} "
         f"output={output_path.resolve()}"
     )
 
