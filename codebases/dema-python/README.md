@@ -33,8 +33,8 @@ Benchmark configuration:
 - Repeats: `3`
 
 Results:
-- Python(serial, backend=`numba`) mean runtime: `10.277 ms` (latest benchmark run in this repository).
-- Java mean runtime: `11.254 ms` (for context from same run).
+- Python(serial, backend=`numba`) mean runtime: `2.264 ms` (latest benchmark run in this repository).
+- Java mean runtime: `14.351 ms` (for context from same run).
 
 Important timing note:
 - Reported `elapsed_ms` is steady-state solver runtime.

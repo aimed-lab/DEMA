@@ -61,7 +61,7 @@ To synchronize fixture copies into each maintained codebase:
 
 *   Re-implemented the DEMA core in Python with deterministic seed-based reproducibility.
 *   Added a benchmark harness for Java vs Python(serial) vs Python(parallel).
-*   Added a parallel execution path for multi-core CPUs (process pool with safe thread fallback in restricted environments).
+*   Added a parallel execution path for multi-core CPUs using compiled Numba `prange` kernels.
 *   Standardized TSV input/output interfaces across implementations.
 
 ### Accuracy and parity status
@@ -91,9 +91,9 @@ Measured environment:
 
 Latest benchmark-medium results (80 rounds, 3 repeats):
 
-*   Java mean runtime: `11.254 ms`
-*   Python(serial, backend=`numba`) mean runtime: `10.277 ms`
-*   Python(parallel, workers=8) mean runtime: `681.839 ms`
+*   Java mean runtime: `14.351 ms`
+*   Python(serial, backend=`numba`) mean runtime: `2.264 ms`
+*   Python(parallel, workers=8) mean runtime: `11.334 ms`
 
 Parity (benchmark-small, seed 7):
 
@@ -103,7 +103,8 @@ Note:
 
 *   The serial Python backend now uses Numba JIT acceleration for hot loops (with NumPy fallback if unavailable).
 *   Reported `elapsed_ms` is steady-state runtime (JIT warm-up is performed before timing).
-*   Parallel mode still has significant overhead on small/medium fixtures and is currently best treated as an experimental path.
+*   Parallel CLI now reports both `workers` (requested) and `effective_workers` (auto-capped for graph size).
+*   Serial still wins on small fixtures; parallel is intended for larger workloads.
 
 ## How to Use
 

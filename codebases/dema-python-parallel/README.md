@@ -1,13 +1,14 @@
 # DEMA Python (Parallel)
 
-Multi-core CPU implementation of DEMA using process-based parallel updates.
+Multi-core CPU implementation of DEMA using a compiled Numba parallel kernel (`prange`) for synchronous node updates.
 
 ## What this update accomplished
 
-- Added a parallel DEMA execution path that uses worker-based synchronous updates.
+- Added a compiled Numba-parallel execution path for synchronous node updates.
 - Kept file format and CLI arguments aligned with serial Python and Java codebases.
-- Added safe fallback behavior for restricted environments where process pools are blocked (falls back to threads).
+- Added safe fallback behavior when Numba is unavailable (falls back to NumPy/Python path).
 - Integrated into the same benchmark and fixture system as the serial implementation.
+- Added automatic worker capping based on graph size to avoid over-threading regressions on small graphs.
 
 This codebase is focused on throughput experiments and multi-core execution, while the serial codebase remains the strict parity reference.
 
@@ -32,16 +33,18 @@ Benchmark configuration:
 - Repeats: `3`
 
 Latest benchmark run in this repository:
-- Python(parallel, workers=8) mean runtime: `681.839 ms`
-- Python(serial, backend=`numba`) mean runtime in same run: `10.277 ms`
+- Python(parallel, workers=8) mean runtime: `11.334 ms`
+- Python(serial, backend=`numba`) mean runtime in same run: `2.264 ms`
+- Java mean runtime in same run: `14.351 ms`
 
 Current interpretation:
-- For small/medium graphs, this parallel implementation is slower than the accelerated serial backend due scheduling and synchronization overhead.
-- Parallel remains useful as an experimentation path for larger workloads and future GPU/offloaded variants.
+- Parallel is now dramatically faster than the previous process-dispatch implementation.
+- For small/medium graphs, accelerated serial can still be faster due synchronization costs.
+- Parallel is intended for larger workloads where multicore throughput can amortize per-round coordination.
 
-Interpretation:
-- In restricted environments that force thread fallback, parallel overhead can dominate and be slower than serial.
-- On unrestricted process-enabled systems and larger graphs, parallel mode may still provide better wall-clock performance.
+Backend note:
+- CLI output includes `backend=` and `effective_workers=`.
+- `workers` is requested concurrency; `effective_workers` is auto-capped per graph size.
 
 ## Hardware guidance
 

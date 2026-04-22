@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 import time
 
-from dema_py_parallel.engine import LayoutParams, ParallelDemaEngine
+from dema_py_parallel.engine import HAS_NUMBA, LayoutParams, ParallelDemaEngine
 from dema_py_parallel.io import load_tsv_graph
 
 
@@ -47,8 +47,10 @@ def main() -> None:
         workers=max(1, args.workers),
     )
 
+    ParallelDemaEngine.warmup_jit()
     started = time.perf_counter()
-    result = ParallelDemaEngine(graph, params).run()
+    engine = ParallelDemaEngine(graph, params)
+    result = engine.run()
     elapsed_ms = (time.perf_counter() - started) * 1000.0
 
     output_path = Path(args.output)
@@ -60,7 +62,9 @@ def main() -> None:
     print(
         f"DEMA-PY-PAR rounds={result.rounds} "
         f"energy={result.final_energy:.12f} elapsed_ms={elapsed_ms:.3f} "
-        f"workers={params.workers} output={output_path.resolve()}"
+        f"workers={params.workers} effective_workers={engine.effective_workers_used} "
+        f"backend={'numba-parallel' if HAS_NUMBA else 'numpy-fallback'} "
+        f"output={output_path.resolve()}"
     )
 
 
