@@ -39,6 +39,75 @@ In essence, DEMA offers a sophisticated method for untangling the complexity of 
 ## Technology Stack
 *   Java (as a Cytoscape plugin)
 
+## 2026 Update: Python and Parallel Codebases
+
+This repository now includes three synchronized but separate maintained codebases:
+
+*   `codebases/cytoscape-plugin-java-modern`: modernized Java Cytoscape plugin codebase.
+*   `codebases/dema-python`: deterministic serial Python implementation.
+*   `codebases/dema-python-parallel`: CPU parallel Python implementation.
+
+Shared benchmark fixtures are maintained in:
+
+*   `codebases/shared/fixtures`
+
+To synchronize fixture copies into each maintained codebase:
+
+```bash
+./scripts/sync_codebases.sh
+```
+
+### What the Python updates accomplished
+
+*   Re-implemented the DEMA core in Python with deterministic seed-based reproducibility.
+*   Added a benchmark harness for Java vs Python(serial) vs Python(parallel).
+*   Added a parallel execution path for multi-core CPUs (process pool with safe thread fallback in restricted environments).
+*   Standardized TSV input/output interfaces across implementations.
+
+### Accuracy and parity status
+
+Benchmark report path:
+
+*   `benchmarks/latest-report.md`
+
+Current parity highlights (benchmark-small, seed 7):
+
+*   Java vs Python(serial) max coordinate delta: `0.000000000000e+00`
+*   Java vs Python(parallel) max coordinate delta: `3.681293071173e+02`
+
+Interpretation:
+
+*   Python(serial) is the strict parity reference for cross-language verification.
+*   Python(parallel) preserves the objective but is not strict-coordinate-parity with serial due to synchronous parallel updates.
+
+### Performance on tested hardware
+
+Measured environment:
+
+*   Apple M4
+*   10 CPU cores
+*   24 GB RAM
+*   Python 3.13.2
+
+Latest benchmark-medium results (80 rounds, 3 repeats):
+
+*   Java mean runtime: `14.646 ms`
+*   Python(serial) mean runtime: `256.273 ms`
+*   Python(parallel, workers=8) mean runtime: `1046.870 ms`
+
+Worker sweep on the same machine:
+
+*   workers=1: `868.854 ms`
+*   workers=2: `794.323 ms`
+*   workers=4: `1243.660 ms`
+*   workers=8: `803.474 ms`
+*   workers=10: `1007.766 ms`
+
+Note:
+
+*   In restricted environments where process pools are limited and thread fallback is used, parallel overhead can dominate.
+*   On unrestricted systems and larger graphs, parallel mode may still improve throughput.
+
 ## How to Use
 
 ### Prerequisites

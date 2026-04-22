@@ -1,0 +1,4 @@
+.bench_tmp
+__pycache__/
+*.pyc
+codebases/cytoscape-plugin-java-modern/build
