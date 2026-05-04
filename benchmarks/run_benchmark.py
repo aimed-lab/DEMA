@@ -216,7 +216,7 @@ Raw run outputs:
 ## Interpretation
 
 - Java and Python(serial) should be treated as parity pair for "same algorithm" validation.
-- Python(parallel) preserves the DEMA objective but uses synchronous process-parallel updates for multi-core execution.
+- Python(parallel) preserves the DEMA objective with adaptive CPU multicore updates and graph-size worker capping.
 """
 
     REPORT.write_text(report, encoding="utf-8")

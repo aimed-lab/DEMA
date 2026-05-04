@@ -60,9 +60,10 @@ To synchronize fixture copies into each maintained codebase:
 ### What the Python updates accomplished
 
 *   Re-implemented the DEMA core in Python with deterministic seed-based reproducibility.
-*   Added a benchmark harness for Java vs Python(serial) vs Python(parallel).
-*   Added a parallel execution path for multi-core CPUs using compiled Numba `prange` kernels.
-*   Standardized TSV input/output interfaces across implementations.
+*   Added Numba-compiled hot loops (with automatic NumPy fallback if Numba is unavailable).
+*   Added sparse set-membership indexing in the Python kernels to remove dense `node x set` scans.
+*   Added an adaptive parallel CPU path with worker auto-capping for graph size/workload.
+*   Standardized TSV input/output interfaces and benchmark harnesses across Java and Python codebases.
 
 ### Accuracy and parity status
 
@@ -72,8 +73,8 @@ Benchmark report path:
 
 Current parity highlights (benchmark-small, seed 7):
 
-*   Java vs Python(serial) max coordinate delta: `0.000000000000e+00`
-*   Java vs Python(parallel) max coordinate delta: `3.681293071173e+02`
+*   Java vs Python(serial) max coordinate delta: `4.661998787014e-09`
+*   Java vs Python(parallel) max coordinate delta: `6.012395449213e+02`
 
 Interpretation:
 
@@ -91,20 +92,29 @@ Measured environment:
 
 Latest benchmark-medium results (80 rounds, 3 repeats):
 
-*   Java mean runtime: `14.351 ms`
-*   Python(serial, backend=`numba`) mean runtime: `2.264 ms`
-*   Python(parallel, workers=8) mean runtime: `11.334 ms`
+*   Java mean runtime: `4.406 ms`
+*   Python(serial, backend=`numba`) mean runtime: `1.098 ms`
+*   Python(parallel, workers=8) mean runtime: `1.988 ms`
 
 Parity (benchmark-small, seed 7):
 
 *   Java vs Python(serial) max coordinate delta: `4.661998787014e-09`
 
-Note:
+Large-workload scaling benchmark:
+
+*   Report path: `benchmarks/scaling-report.md`
+*   Synthetic fixture (`768` nodes, `3072` edges, `96` sets, `4` memberships/node):
+    *   Python(serial) mean runtime: `122.371 ms`
+    *   Python(parallel) best mean runtime: `65.697 ms` (requested workers `8`, effective workers `6`)
+    *   Best speedup vs serial: `1.863x`
+
+Notes:
 
 *   The serial Python backend now uses Numba JIT acceleration for hot loops (with NumPy fallback if unavailable).
 *   Reported `elapsed_ms` is steady-state runtime (JIT warm-up is performed before timing).
-*   Parallel CLI now reports both `workers` (requested) and `effective_workers` (auto-capped for graph size).
-*   Serial still wins on small fixtures; parallel is intended for larger workloads.
+*   Parallel CLI reports both `workers` (requested) and `effective_workers` (auto-capped for graph size/workload).
+*   Small/medium fixtures are often faster in serial mode; parallel mode is intended for larger workloads.
+*   For very large gene-set workloads, complexity now scales with total set memberships rather than dense set matrix scans in the hot loops.
 
 ## How to Use
 

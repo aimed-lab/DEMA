@@ -9,6 +9,7 @@ Pure-Python deterministic DEMA implementation that mirrors the modern Java core.
 - Standardized TSV I/O so Python and Java can be benchmarked with identical inputs.
 - Added cross-codebase synchronization via shared fixtures.
 - Added an accelerated Numba backend for hot loops, with automatic fallback to NumPy if Numba is unavailable.
+- Added sparse set-membership indexing in core kernels so large gene-set workloads avoid dense set scans.
 
 The serial Python implementation is now the reference path for Python correctness and reproducibility.
 
@@ -33,8 +34,12 @@ Benchmark configuration:
 - Repeats: `3`
 
 Results:
-- Python(serial, backend=`numba`) mean runtime: `2.264 ms` (latest benchmark run in this repository).
-- Java mean runtime: `14.351 ms` (for context from same run).
+- Python(serial, backend=`numba`) mean runtime: `1.098 ms` (latest benchmark run in this repository).
+- Java mean runtime: `4.406 ms` (for context from same run).
+
+Large synthetic scaling run (`768` nodes, `3072` edges, `96` sets, `4` memberships/node):
+- Python(serial) mean runtime: `122.371 ms`.
+- Best parallel run on same fixture: `65.697 ms` (`1.863x` faster, see `benchmarks/scaling-report.md`).
 
 Important timing note:
 - Reported `elapsed_ms` is steady-state solver runtime.

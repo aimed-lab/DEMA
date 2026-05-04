@@ -3,6 +3,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 import math
+import os
+import tempfile
+
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
+os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
+os.environ.setdefault("NUMBA_CACHE_DIR", os.path.join(tempfile.gettempdir(), "dema-numba-cache"))
 
 import numpy as np
 
@@ -21,26 +29,28 @@ except Exception:  # pragma: no cover
 
 
 @njit(cache=True)
-def _compute_set_centers_nb(positions, set_membership):
-    s_count, n = set_membership.shape
+def _compute_set_centers_nb(positions, set_offsets, set_node_ids):
+    s_count = set_offsets.shape[0] - 1
     centers = np.zeros((s_count, 2), dtype=np.float64)
     for s in range(s_count):
+        start = set_offsets[s]
+        end = set_offsets[s + 1]
+        count = end - start
+        if count <= 0:
+            continue
         sx = 0.0
         sy = 0.0
-        c = 0
-        for i in range(n):
-            if set_membership[s, i]:
-                sx += positions[i, 0]
-                sy += positions[i, 1]
-                c += 1
-        if c > 0:
-            centers[s, 0] = sx / c
-            centers[s, 1] = sy / c
+        for idx in range(start, end):
+            node = set_node_ids[idx]
+            sx += positions[node, 0]
+            sy += positions[node, 1]
+        centers[s, 0] = sx / count
+        centers[s, 1] = sy / count
     return centers
 
 
 @njit(cache=True)
-def _node_energy_nb(node, px, py, positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps):
+def _node_energy_nb(node, px, py, positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps):
     n = positions.shape[0]
     e = 0.0
 
@@ -60,19 +70,20 @@ def _node_energy_nb(node, px, py, positions, adjacency, weight, fc, set_membersh
                 denom = eps
             e += kb * fc[node] * fc[i] / denom
 
-    s_count = set_membership.shape[0]
-    for s in range(s_count):
-        if set_membership[s, node]:
-            dx = px - set_centers[s, 0]
-            dy = py - set_centers[s, 1]
-            dis = math.sqrt(dx * dx + dy * dy)
-            e += dis * dis * kc
+    start = node_set_offsets[node]
+    end = node_set_offsets[node + 1]
+    for idx in range(start, end):
+        s = node_set_ids[idx]
+        dx = px - set_centers[s, 0]
+        dy = py - set_centers[s, 1]
+        dis = math.sqrt(dx * dx + dy * dy)
+        e += dis * dis * kc
 
     return e
 
 
 @njit(cache=True)
-def _gradient_nb(node, positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps):
+def _gradient_nb(node, positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps):
     n = positions.shape[0]
     px = positions[node, 0]
     py = positions[node, 1]
@@ -102,14 +113,15 @@ def _gradient_nb(node, positions, adjacency, weight, fc, set_membership, set_cen
             gx += (dx / dis) * attract
             gy += (dy / dis) * attract
 
-    s_count = set_membership.shape[0]
-    for s in range(s_count):
-        if set_membership[s, node]:
-            dx = set_centers[s, 0] - px
-            dy = set_centers[s, 1] - py
-            dis = math.sqrt(dx * dx + dy * dy)
-            gx += dx * 2.0 * dis * kc
-            gy += dy * 2.0 * dis * kc
+    start = node_set_offsets[node]
+    end = node_set_offsets[node + 1]
+    for idx in range(start, end):
+        s = node_set_ids[idx]
+        dx = set_centers[s, 0] - px
+        dy = set_centers[s, 1] - py
+        dis = math.sqrt(dx * dx + dy * dy)
+        gx += dx * 2.0 * dis * kc
+        gy += dy * 2.0 * dis * kc
 
     norm = math.sqrt(gx * gx + gy * gy)
     if norm <= eps or math.isnan(norm):
@@ -146,7 +158,7 @@ def _any_constraint_violation_nb(positions, adjacency, weight):
 
 
 @njit(cache=True)
-def _total_energy_nb(positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps):
+def _total_energy_nb(positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps):
     n = positions.shape[0]
     total = 0.0
     for node in range(n):
@@ -158,7 +170,8 @@ def _total_energy_nb(positions, adjacency, weight, fc, set_membership, set_cente
             adjacency,
             weight,
             fc,
-            set_membership,
+            node_set_offsets,
+            node_set_ids,
             set_centers,
             ka,
             kb,
@@ -169,7 +182,7 @@ def _total_energy_nb(positions, adjacency, weight, fc, set_membership, set_cente
 
 
 @njit(cache=True)
-def _binary_search_step_nb(node, positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps, search, dx, dy, current_energy):
+def _binary_search_step_nb(node, positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps, search, dx, dy, current_energy):
     left = 1
     right = search.shape[0] - 1
     best = 0
@@ -182,7 +195,7 @@ def _binary_search_step_nb(node, positions, adjacency, weight, fc, set_membershi
         cx = base_x + dx * search[mid]
         cy = base_y + dy * search[mid]
 
-        cand_energy = _node_energy_nb(node, cx, cy, positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps)
+        cand_energy = _node_energy_nb(node, cx, cy, positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps)
         improves = cand_energy < current_energy and not _violates_candidate_nb(node, cx, cy, positions, adjacency, weight)
 
         if improves:
@@ -195,15 +208,15 @@ def _binary_search_step_nb(node, positions, adjacency, weight, fc, set_membershi
 
 
 @njit(cache=True)
-def _run_numba(positions, adjacency, weight, fc, set_membership, ka, kb, kc, max_rounds, eps, search):
+def _run_numba(positions, adjacency, weight, fc, set_offsets, set_node_ids, node_set_offsets, node_set_ids, ka, kb, kc, max_rounds, eps, search):
     rounds_completed = 0
 
     for round_idx in range(max_rounds):
         if _any_constraint_violation_nb(positions, adjacency, weight):
             return -1, 0.0
 
-        set_centers = _compute_set_centers_nb(positions, set_membership)
-        before = _total_energy_nb(positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps)
+        set_centers = _compute_set_centers_nb(positions, set_offsets, set_node_ids)
+        before = _total_energy_nb(positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps)
 
         n = positions.shape[0]
         for node in range(n):
@@ -215,7 +228,8 @@ def _run_numba(positions, adjacency, weight, fc, set_membership, ka, kb, kc, max
                 adjacency,
                 weight,
                 fc,
-                set_membership,
+                node_set_offsets,
+                node_set_ids,
                 set_centers,
                 ka,
                 kb,
@@ -223,7 +237,7 @@ def _run_numba(positions, adjacency, weight, fc, set_membership, ka, kb, kc, max
                 eps,
             )
 
-            gx, gy, ok = _gradient_nb(node, positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps)
+            gx, gy, ok = _gradient_nb(node, positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps)
             if ok:
                 step_idx = _binary_search_step_nb(
                     node,
@@ -231,7 +245,8 @@ def _run_numba(positions, adjacency, weight, fc, set_membership, ka, kb, kc, max
                     adjacency,
                     weight,
                     fc,
-                    set_membership,
+                    node_set_offsets,
+                    node_set_ids,
                     set_centers,
                     ka,
                     kb,
@@ -246,13 +261,13 @@ def _run_numba(positions, adjacency, weight, fc, set_membership, ka, kb, kc, max
                 positions[node, 0] += gx * step
                 positions[node, 1] += gy * step
 
-        after = _total_energy_nb(positions, adjacency, weight, fc, set_membership, set_centers, ka, kb, kc, eps)
+        after = _total_energy_nb(positions, adjacency, weight, fc, node_set_offsets, node_set_ids, set_centers, ka, kb, kc, eps)
         rounds_completed = round_idx + 1
         if abs(before - after) <= eps:
             break
 
-    final_centers = _compute_set_centers_nb(positions, set_membership)
-    final_energy = _total_energy_nb(positions, adjacency, weight, fc, set_membership, final_centers, ka, kb, kc, eps)
+    final_centers = _compute_set_centers_nb(positions, set_offsets, set_node_ids)
+    final_energy = _total_energy_nb(positions, adjacency, weight, fc, node_set_offsets, node_set_ids, final_centers, ka, kb, kc, eps)
     return rounds_completed, final_energy
 
 
@@ -307,6 +322,12 @@ class DemaEngine:
 
         self.set_indices: List[np.ndarray] = [np.asarray(group, dtype=np.int64) for group in graph.sets]
         self.set_membership = self._build_set_membership()
+        (
+            self.set_offsets,
+            self.set_node_ids,
+            self.node_set_offsets,
+            self.node_set_ids,
+        ) = self._build_sparse_membership()
 
         self._compute_weight()
         self._random_initialize()
@@ -320,10 +341,28 @@ class DemaEngine:
         adjacency = np.array([[False, True], [True, False]], dtype=np.bool_)
         weight = np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.float64)
         fc = np.array([1.0, 1.0], dtype=np.float64)
-        set_membership = np.zeros((1, 2), dtype=np.bool_)
+        set_offsets = np.array([0, 2], dtype=np.int64)
+        set_node_ids = np.array([0, 1], dtype=np.int64)
+        node_set_offsets = np.array([0, 1, 2], dtype=np.int64)
+        node_set_ids = np.array([0, 0], dtype=np.int64)
         search = np.linspace(0.0, 1.0, 8, dtype=np.float64)
 
-        _run_numba(positions, adjacency, weight, fc, set_membership, 1, 1, 0, 1, 1e-8, search)
+        _run_numba(
+            positions,
+            adjacency,
+            weight,
+            fc,
+            set_offsets,
+            set_node_ids,
+            node_set_offsets,
+            node_set_ids,
+            1,
+            1,
+            0,
+            1,
+            1e-8,
+            search,
+        )
         cls._jit_warmed = True
 
     def run(self) -> LayoutResult:
@@ -333,7 +372,10 @@ class DemaEngine:
                 self.adjacency,
                 self.weight,
                 self.fc,
-                self.set_membership,
+                self.set_offsets,
+                self.set_node_ids,
+                self.node_set_offsets,
+                self.node_set_ids,
                 self.params.ka,
                 self.params.kb,
                 self.params.kc,
@@ -383,6 +425,43 @@ class DemaEngine:
             if members.size:
                 membership[s, members] = True
         return membership
+
+    def _build_sparse_membership(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        set_count = len(self.set_indices)
+        set_offsets = np.zeros(set_count + 1, dtype=np.int64)
+
+        total_memberships = 0
+        for s, members in enumerate(self.set_indices):
+            set_offsets[s] = total_memberships
+            total_memberships += int(members.size)
+        set_offsets[set_count] = total_memberships
+
+        set_node_ids = np.empty(total_memberships, dtype=np.int64)
+        write_pos = 0
+        for members in self.set_indices:
+            size = int(members.size)
+            if size:
+                set_node_ids[write_pos:write_pos + size] = members
+                write_pos += size
+
+        node_set_counts = np.zeros(self.n, dtype=np.int64)
+        for members in self.set_indices:
+            for node in members:
+                node_set_counts[node] += 1
+
+        node_set_offsets = np.zeros(self.n + 1, dtype=np.int64)
+        for node in range(self.n):
+            node_set_offsets[node + 1] = node_set_offsets[node] + node_set_counts[node]
+
+        node_set_ids = np.empty(int(node_set_offsets[self.n]), dtype=np.int64)
+        cursor = np.array(node_set_offsets[:-1], copy=True)
+        for s, members in enumerate(self.set_indices):
+            for node in members:
+                pos = cursor[node]
+                node_set_ids[pos] = s
+                cursor[node] = pos + 1
+
+        return set_offsets, set_node_ids, node_set_offsets, node_set_ids
 
     def _compute_weight(self) -> None:
         adj = self.adjacency

@@ -1,6 +1,6 @@
 # DEMA Python (Parallel)
 
-Multi-core CPU implementation of DEMA using a compiled Numba parallel kernel (`prange`) for synchronous node updates.
+Multi-core CPU implementation of DEMA using compiled Numba kernels with adaptive worker capping and graph-size-aware parallel execution.
 
 ## What this update accomplished
 
@@ -8,7 +8,8 @@ Multi-core CPU implementation of DEMA using a compiled Numba parallel kernel (`p
 - Kept file format and CLI arguments aligned with serial Python and Java codebases.
 - Added safe fallback behavior when Numba is unavailable (falls back to NumPy/Python path).
 - Integrated into the same benchmark and fixture system as the serial implementation.
-- Added automatic worker capping based on graph size to avoid over-threading regressions on small graphs.
+- Added automatic worker capping based on graph size/workload to avoid over-threading regressions on small graphs.
+- Added sparse set-membership indexing in kernels to reduce large gene-set overhead.
 
 This codebase is focused on throughput experiments and multi-core execution, while the serial codebase remains the strict parity reference.
 
@@ -33,14 +34,15 @@ Benchmark configuration:
 - Repeats: `3`
 
 Latest benchmark run in this repository:
-- Python(parallel, workers=8) mean runtime: `11.334 ms`
-- Python(serial, backend=`numba`) mean runtime in same run: `2.264 ms`
-- Java mean runtime in same run: `14.351 ms`
+- Python(parallel, workers=8) mean runtime: `1.988 ms`
+- Python(serial, backend=`numba`) mean runtime in same run: `1.098 ms`
+- Java mean runtime in same run: `4.406 ms`
 
 Current interpretation:
-- Parallel is now dramatically faster than the previous process-dispatch implementation.
 - For small/medium graphs, accelerated serial can still be faster due synchronization costs.
-- Parallel is intended for larger workloads where multicore throughput can amortize per-round coordination.
+- Parallel auto-caps workers and can outperform serial on larger workloads.
+- On the repository scaling fixture (`768` nodes), best parallel mean is `65.697 ms` vs serial `122.371 ms` (`1.863x` speedup).
+- See `benchmarks/scaling-report.md` for the latest worker sweep.
 
 Backend note:
 - CLI output includes `backend=` and `effective_workers=`.

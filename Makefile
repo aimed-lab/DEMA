@@ -1,10 +1,11 @@
-.PHONY: help sync check benchmark all java-cli py-cli pyp-cli clean
+.PHONY: help sync check benchmark benchmark-scaling all java-cli py-cli pyp-cli clean
 
 help:
 	@echo "Available targets:"
 	@echo "  make sync       - synchronize shared fixtures into all maintained codebases"
 	@echo "  make check      - run original plugin compatibility probe"
 	@echo "  make benchmark  - run Java/Python/Parallel benchmark and parity report"
+	@echo "  make benchmark-scaling - run large synthetic scaling benchmark + worker sweep"
 	@echo "  make all        - run sync + check + benchmark"
 	@echo "  make java-cli   - run Java core CLI on benchmark-small"
 	@echo "  make py-cli     - run serial Python layout on benchmark-small"
@@ -19,6 +20,9 @@ check:
 
 benchmark:
 	./benchmarks/run_benchmark.sh
+
+benchmark-scaling:
+	./benchmarks/run_scaling_benchmark.sh
 
 all: sync check benchmark
 
