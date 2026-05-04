@@ -54,6 +54,20 @@ Backend note:
 
 ## Run
 
+Install from this directory when you want the package and CLI on your Python path:
+
+```bash
+python3 -m pip install -e .
+dema-py-parallel \
+  --nodes fixtures/benchmark-small/nodes.tsv \
+  --edges fixtures/benchmark-small/edges.tsv \
+  --workers 4 \
+  --seed 7 \
+  --output /tmp/dema_py_parallel.tsv
+```
+
+Or run directly from the source checkout:
+
 ```bash
 python3 run_layout_parallel.py \
   --nodes fixtures/benchmark-small/nodes.tsv \

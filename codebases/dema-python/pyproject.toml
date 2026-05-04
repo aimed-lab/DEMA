@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dema-py"
+version = "0.1.0"
+description = "Pure-Python deterministic DEMA layout implementation."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "AIMed Lab" },
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+  "numpy>=1.24",
+]
+
+[project.scripts]
+dema-py = "run_layout:main"
+
+[tool.setuptools]
+packages = ["dema_py"]
+py-modules = ["run_layout"]
+
+[project.optional-dependencies]
+numba = ["numba>=0.59"]
